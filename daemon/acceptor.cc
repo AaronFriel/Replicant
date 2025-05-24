@@ -65,7 +65,7 @@ struct acceptor::log_segment
     bool write_ballot(const ballot& b);
     bool write_pval(const pvalue& pval);
     bool write_gc(uint64_t below);
-    bool write(std::auto_ptr<e::buffer> buf);
+    bool write(std::unique_ptr<e::buffer> buf);
 
     bool all_synced();
     void maybe_sync(uint64_t opnum);
@@ -118,29 +118,29 @@ acceptor :: log_segment :: open(int dir, uint64_t s)
 bool
 acceptor :: log_segment :: write_ballot(const ballot& b)
 {
-    std::auto_ptr<e::buffer> buf(e::buffer::create(1 + pack_size(b)));
+    std::unique_ptr<e::buffer> buf(e::buffer::create(1 + pack_size(b)));
     buf->pack_at(0) << uint8_t('A') << b;
-    return write(buf);
+    return write(std::move(buf));
 }
 
 bool
 acceptor :: log_segment :: write_pval(const pvalue& pval)
 {
-    std::auto_ptr<e::buffer> buf(e::buffer::create(1 + pack_size(pval)));
+    std::unique_ptr<e::buffer> buf(e::buffer::create(1 + pack_size(pval)));
     buf->pack_at(0) << uint8_t('B') << pval;
-    return write(buf);
+    return write(std::move(buf));
 }
 
 bool
 acceptor :: log_segment :: write_gc(uint64_t below)
 {
-    std::auto_ptr<e::buffer> buf(e::buffer::create(1 + sizeof(uint64_t)));
+    std::unique_ptr<e::buffer> buf(e::buffer::create(1 + sizeof(uint64_t)));
     buf->pack_at(0) << uint8_t('G') << below;
-    return write(buf);
+    return write(std::move(buf));
 }
 
 bool
-acceptor :: log_segment :: write(std::auto_ptr<e::buffer> buf)
+acceptor :: log_segment :: write(std::unique_ptr<e::buffer> buf)
 {
     written += buf->size();
 
@@ -723,7 +723,7 @@ acceptor :: record_snapshot(uint64_t slot, const e::slice& snapshot)
 
 bool
 acceptor :: load_latest_snapshot(e::slice* snapshot,
-                                 std::auto_ptr<e::buffer>* snapshot_backing)
+                                 std::unique_ptr<e::buffer>* snapshot_backing)
 {
     uint64_t max_replica = 0;
     std::string path;
@@ -905,7 +905,7 @@ acceptor :: get_writable_log()
 
     if (m_current->written >= 1ULL << 26 && !m_previous.get())
     {
-        std::auto_ptr<log_segment> next(new log_segment());
+        std::unique_ptr<log_segment> next(new log_segment());
 
         if (!next->open(m_dir.get(), m_current->lognum + 1))
         {
@@ -914,9 +914,9 @@ acceptor :: get_writable_log()
             return NULL;
         }
 
-        m_previous = m_current;
+        m_previous = std::move(m_current);
         m_previous->maybe_sync(++m_opcount);
-        m_current = next;
+        m_current = std::move(next);
     }
 
     return m_current.get();

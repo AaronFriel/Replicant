@@ -58,10 +58,10 @@ class pending
         e::error error() const { return m_error; }
 
     public:
-        virtual std::auto_ptr<e::buffer> request(uint64_t nonce) = 0;
+        virtual std::unique_ptr<e::buffer> request(uint64_t nonce) = 0;
         virtual bool resend_on_failure() = 0;
         virtual void handle_response(client* cl,
-                                     std::auto_ptr<e::buffer> msg,
+                                     std::unique_ptr<e::buffer> msg,
                                      e::unpacker up) = 0;
 
     public:

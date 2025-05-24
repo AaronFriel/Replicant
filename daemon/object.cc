@@ -273,7 +273,7 @@ object :: rtor(e::unpacker up)
     for (uint64_t i = 0; i < cond_size; ++i)
     {
         e::slice s;
-        std::auto_ptr<condition> c(new condition());
+        std::unique_ptr<condition> c(new condition());
         up = up >> s >> *c;
         m_conditions[s.str()] = c.get();
         c.release();
@@ -610,10 +610,10 @@ object :: run()
         (*it)->abort_snapshot();
     }
 
-    std::auto_ptr<e::buffer> msg(e::buffer::create(BUSYBEE_HEADER_SIZE + 8));
+    std::unique_ptr<e::buffer> msg(e::buffer::create(BUSYBEE_HEADER_SIZE + 8));
     msg->pack_at(BUSYBEE_HEADER_SIZE) << REPLNET_OBJECT_FAILED;
     daemon* d = m_replica->m_daemon;
-    d->send_from_non_main_thread(d->id(), msg);
+    d->send_from_non_main_thread(d->id(), std::move(msg));
     po6::threads::mutex::hold hold(&m_mtx);
     m_done = true;
 }
@@ -695,7 +695,7 @@ object :: do_call(const enqueued_call& c)
     const size_t sz = sizeof(uint64_t)
                     + sizeof(uint32_t) + func.size()
                     + sizeof(uint32_t) + input.size();
-    std::auto_ptr<e::buffer> msg(e::buffer::create(sz + 1));
+    std::unique_ptr<e::buffer> msg(e::buffer::create(sz + 1));
     msg->pack_at(0)
         << uint8_t(ACTION_COMMAND)
         << uint64_t(sz)
@@ -889,7 +889,7 @@ object :: do_call_cond_create()
 
     if (it == m_conditions.end())
     {
-        std::auto_ptr<condition> c(new condition());
+        std::unique_ptr<condition> c(new condition());
         m_conditions.insert(std::make_pair(cond, c.get()));
         c.release();
     }

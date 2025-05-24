@@ -71,7 +71,7 @@ class acceptor
         uint64_t sync_cut();
         bool record_snapshot(uint64_t slot, const e::slice& snapshot);
         bool load_latest_snapshot(e::slice* snapshot,
-                                  std::auto_ptr<e::buffer>* snapshot_backing);
+                                  std::unique_ptr<e::buffer>* snapshot_backing);
 
     private:
         struct log_segment;
@@ -96,9 +96,9 @@ class acceptor
         po6::io::fd m_lock;
         uint64_t m_opcount;
         bool m_permafail;
-        std::auto_ptr<log_segment> m_current;
-        std::auto_ptr<log_segment> m_previous;
-        const std::auto_ptr<garbage_collector> m_gc;
+        std::unique_ptr<log_segment> m_current;
+        std::unique_ptr<log_segment> m_previous;
+        const std::unique_ptr<garbage_collector> m_gc;
 };
 
 END_REPLICANT_NAMESPACE

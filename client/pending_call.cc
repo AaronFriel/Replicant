@@ -65,7 +65,7 @@ pending_call :: ~pending_call() throw ()
 {
 }
 
-std::auto_ptr<e::buffer>
+std::unique_ptr<e::buffer>
 pending_call :: request(uint64_t nonce)
 {
     e::slice obj(m_object);
@@ -77,7 +77,7 @@ pending_call :: request(uint64_t nonce)
                     + pack_size(obj)
                     + pack_size(func)
                     + pack_size(input);
-    std::auto_ptr<e::buffer> msg(e::buffer::create(sz));
+    std::unique_ptr<e::buffer> msg(e::buffer::create(sz));
     msg->pack_at(BUSYBEE_HEADER_SIZE)
         << REPLNET_CALL << nonce << obj << func << input;
     return msg;
@@ -90,7 +90,7 @@ pending_call :: resend_on_failure()
 }
 
 void
-pending_call :: handle_response(client*, std::auto_ptr<e::buffer>, e::unpacker up)
+pending_call :: handle_response(client*, std::unique_ptr<e::buffer>, e::unpacker up)
 {
     replicant_returncode st;
     e::slice output;

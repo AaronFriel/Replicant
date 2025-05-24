@@ -97,11 +97,11 @@ class replica
     public:
         void take_blocking_snapshot(uint64_t* snapshot_slot,
                                     e::slice* snapshot,
-                                    std::auto_ptr<e::buffer>* snapshot_backing);
+                                    std::unique_ptr<e::buffer>* snapshot_backing);
         uint64_t last_snapshot_num();
         void get_last_snapshot(uint64_t* snapshot_slot,
                                e::slice* snapshot,
-                               std::auto_ptr<e::buffer>* snapshot_backing);
+                               std::unique_ptr<e::buffer>* snapshot_backing);
         static replica* from_snapshot(daemon* d, const e::slice& snap);
 
     // recovering from object failures
@@ -246,7 +246,7 @@ class replica
         // protect the latest snapshot
         po6::threads::mutex m_latest_snapshot_mtx;
         uint64_t m_latest_snapshot_slot;
-        std::auto_ptr<e::buffer> m_latest_snapshot_backing;
+        std::unique_ptr<e::buffer> m_latest_snapshot_backing;
 
     private:
         replica(const replica&);

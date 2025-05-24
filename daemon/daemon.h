@@ -95,43 +95,43 @@ class daemon
     public:
         void become_cluster_member(bootstrap bs);
         void setup_replica_from_bootstrap(bootstrap bs,
-                                          std::auto_ptr<replica>* rep);
+                                          std::unique_ptr<replica>* rep);
         void send_bootstrap(server_id si);
         void process_bootstrap(server_id si,
-                               std::auto_ptr<e::buffer> msg,
+                               std::unique_ptr<e::buffer> msg,
                                e::unpacker up);
         void process_state_transfer(server_id si,
-                                    std::auto_ptr<e::buffer> msg,
+                                    std::unique_ptr<e::buffer> msg,
                                     e::unpacker up);
         void process_who_are_you(server_id si,
-                                 std::auto_ptr<e::buffer> msg,
+                                 std::unique_ptr<e::buffer> msg,
                                  e::unpacker up);
 
     // core Paxos protocol in steady state
     public:
         void send_paxos_phase1a(server_id to, const ballot& b);
         void process_paxos_phase1a(server_id si,
-                                   std::auto_ptr<e::buffer> msg,
+                                   std::unique_ptr<e::buffer> msg,
                                    e::unpacker up);
         void send_paxos_phase1b(server_id to);
         void process_paxos_phase1b(server_id si,
-                                   std::auto_ptr<e::buffer> msg,
+                                   std::unique_ptr<e::buffer> msg,
                                    e::unpacker up);
         void send_paxos_phase2a(server_id to, const pvalue& pval);
         void process_paxos_phase2a(server_id si,
-                                   std::auto_ptr<e::buffer> msg,
+                                   std::unique_ptr<e::buffer> msg,
                                    e::unpacker up);
         void send_paxos_phase2b(server_id to, const pvalue& pval);
         void process_paxos_phase2b(server_id si,
-                                   std::auto_ptr<e::buffer> msg,
+                                   std::unique_ptr<e::buffer> msg,
                                    e::unpacker up);
         void send_paxos_learn(server_id to, const pvalue& pval);
         void process_paxos_learn(server_id si,
-                                 std::auto_ptr<e::buffer> msg,
+                                 std::unique_ptr<e::buffer> msg,
                                  e::unpacker up);
         void send_paxos_submit(uint64_t slot_start, uint64_t slot_limit, const e::slice& command);
         void process_paxos_submit(server_id si,
-                                  std::auto_ptr<e::buffer> msg,
+                                  std::unique_ptr<e::buffer> msg,
                                   e::unpacker up);
         void enqueue_paxos_command(slot_type t,
                                    const std::string& command);
@@ -160,25 +160,25 @@ class daemon
     public:
         std::string construct_become_member_command(const server& s);
         void process_server_become_member(server_id si,
-                                          std::auto_ptr<e::buffer> msg,
+                                          std::unique_ptr<e::buffer> msg,
                                           e::unpacker up);
         void periodic_check_address(uint64_t now);
 
     // Nonce-oriented stuff
     public:
         void process_unique_number(server_id si,
-                                   std::auto_ptr<e::buffer> msg,
+                                   std::unique_ptr<e::buffer> msg,
                                    e::unpacker up);
         void periodic_generate_nonce_sequence(uint64_t now);
         void callback_nonce_sequence(server_id si, uint64_t token, uint64_t counter);
         bool generate_nonce(uint64_t* nonce);
         void process_when_nonces_available(server_id si,
-                                           std::auto_ptr<e::buffer> msg);
+                                           std::unique_ptr<e::buffer> msg);
 
     // Dead objects?
     public:
         void process_object_failed(server_id si,
-                                   std::auto_ptr<e::buffer> msg,
+                                   std::unique_ptr<e::buffer> msg,
                                    e::unpacker up);
         void periodic_maintain_objects(uint64_t now);
 
@@ -198,19 +198,19 @@ class daemon
     // Client-library calls
     public:
         void process_poke(server_id si,
-                          std::auto_ptr<e::buffer> msg,
+                          std::unique_ptr<e::buffer> msg,
                           e::unpacker up);
         void process_cond_wait(server_id si,
-                               std::auto_ptr<e::buffer> msg,
+                               std::unique_ptr<e::buffer> msg,
                                e::unpacker up);
         void process_call(server_id si,
-                          std::auto_ptr<e::buffer> msg,
+                          std::unique_ptr<e::buffer> msg,
                           e::unpacker up);
         void process_get_robust_params(server_id si,
-                                       std::auto_ptr<e::buffer> msg,
+                                       std::unique_ptr<e::buffer> msg,
                                        e::unpacker up);
         void process_call_robust(server_id si,
-                                 std::auto_ptr<e::buffer> msg,
+                                 std::unique_ptr<e::buffer> msg,
                                  e::unpacker up);
         void periodic_tick(uint64_t now);
 
@@ -218,11 +218,11 @@ class daemon
     public:
         void send_ping(server_id si);
         void process_ping(server_id si,
-                          std::auto_ptr<e::buffer> msg,
+                          std::unique_ptr<e::buffer> msg,
                           e::unpacker up);
         void send_pong(server_id si);
         void process_pong(server_id si,
-                          std::auto_ptr<e::buffer> msg,
+                          std::unique_ptr<e::buffer> msg,
                           e::unpacker up);
         void periodic_ping_servers(uint64_t now);
 
@@ -230,9 +230,9 @@ class daemon
         void rebootstrap(bootstrap b);
 
     public:
-        bool send(server_id si, std::auto_ptr<e::buffer> msg);
-        bool send_from_non_main_thread(server_id si, std::auto_ptr<e::buffer> msg);
-        bool send_when_acceptor_persistent(server_id si, std::auto_ptr<e::buffer> msg);
+        bool send(server_id si, std::unique_ptr<e::buffer> msg);
+        bool send_from_non_main_thread(server_id si, std::unique_ptr<e::buffer> msg);
+        bool send_when_acceptor_persistent(server_id si, std::unique_ptr<e::buffer> msg);
         void flush_acceptor_messages();
 
     public:
@@ -263,7 +263,7 @@ class daemon
         std::vector<periodic> m_periodic;
 
         // Bootstrap when every node in the cluster has changed its address
-        std::auto_ptr<po6::threads::thread> m_bootstrap_thread;
+        std::unique_ptr<po6::threads::thread> m_bootstrap_thread;
         uint32_t m_bootstrap_stop;
 
         // generate unique numbers, using a counter in the replica
@@ -289,10 +289,10 @@ class daemon
 
         // paxos state
         acceptor m_acceptor;
-        std::auto_ptr<scout> m_scout;
+        std::unique_ptr<scout> m_scout;
         uint64_t m_scout_wait_cycles;
-        std::auto_ptr<leader> m_leader;
-        std::auto_ptr<replica> m_replica;
+        std::unique_ptr<leader> m_leader;
+        std::unique_ptr<replica> m_replica;
         uint64_t m_last_replica_snapshot; // XXX remove
         uint64_t m_last_gc_slot; // XXX remove
 };
