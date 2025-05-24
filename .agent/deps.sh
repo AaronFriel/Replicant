@@ -6,7 +6,7 @@ apt update -y
 apt install -y build-essential autoconf automake libtool pkg-config \
     libgoogle-glog-dev libleveldb-dev libpopt-dev \
     libgtest-dev python-dev-is-python3 swig default-jdk flex bison cython3 gperf \
-    libsparsehash-dev pandoc \
+    libsparsehash-dev pandoc valgrind \
     libbsd-dev \
     autoconf-archive &
 APT_PID=$!
