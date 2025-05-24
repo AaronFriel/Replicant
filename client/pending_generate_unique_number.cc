@@ -46,13 +46,13 @@ pending_generate_unique_number :: ~pending_generate_unique_number() throw ()
 {
 }
 
-std::auto_ptr<e::buffer>
+std::unique_ptr<e::buffer>
 pending_generate_unique_number :: request(uint64_t nonce)
 {
     const size_t sz = BUSYBEE_HEADER_SIZE
                     + pack_size(REPLNET_UNIQUE_NUMBER)
                     + sizeof(uint64_t);
-    std::auto_ptr<e::buffer> msg(e::buffer::create(sz));
+    std::unique_ptr<e::buffer> msg(e::buffer::create(sz));
     msg->pack_at(BUSYBEE_HEADER_SIZE) << REPLNET_UNIQUE_NUMBER << nonce;
     return msg;
 }
@@ -65,7 +65,7 @@ pending_generate_unique_number :: resend_on_failure()
 
 void
 pending_generate_unique_number :: handle_response(client*,
-                                                  std::auto_ptr<e::buffer>,
+                                                  std::unique_ptr<e::buffer>,
                                                   e::unpacker up)
 {
     up = up >> *m_number;

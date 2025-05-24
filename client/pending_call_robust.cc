@@ -63,7 +63,7 @@ pending_call_robust :: ~pending_call_robust() throw ()
 {
 }
 
-std::auto_ptr<e::buffer>
+std::unique_ptr<e::buffer>
 pending_call_robust :: request(uint64_t nonce)
 {
     assert(command_nonce() > 0);
@@ -78,7 +78,7 @@ pending_call_robust :: request(uint64_t nonce)
                     + pack_size(obj)
                     + pack_size(func)
                     + pack_size(input);
-    std::auto_ptr<e::buffer> msg(e::buffer::create(sz));
+    std::unique_ptr<e::buffer> msg(e::buffer::create(sz));
     msg->pack_at(BUSYBEE_HEADER_SIZE)
         << REPLNET_CALL_ROBUST << nonce << command_nonce() << min_slot() << obj << func << input;
     return msg;
@@ -91,7 +91,7 @@ pending_call_robust :: resend_on_failure()
 }
 
 void
-pending_call_robust :: handle_response(client*, std::auto_ptr<e::buffer>, e::unpacker up)
+pending_call_robust :: handle_response(client*, std::unique_ptr<e::buffer>, e::unpacker up)
 {
     replicant_returncode st;
     e::slice output;

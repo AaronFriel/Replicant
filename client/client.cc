@@ -864,7 +864,7 @@ client :: inner_loop(int timeout, replicant_returncode* status)
     }
 
     uint64_t id;
-    std::auto_ptr<e::buffer> msg;
+    std::unique_ptr<e::buffer> msg;
     const bool isset = m_flagfd.isset();
     m_flagfd.clear();
     busybee_returncode rc = m_busybee->recv(timeout, &id, &msg);
@@ -982,7 +982,7 @@ client :: inner_loop(int timeout, replicant_returncode* status)
         return 0;
     }
 
-    it->second->handle_response(this, msg, up);
+    it->second->handle_response(this, std::move(msg), up);
 
     if (it->second->client_visible_id() >= 0)
     {
@@ -1085,8 +1085,8 @@ client :: send(pending* p)
     while ((si = ss.next()) != server_id() && m_config.version() != version_id())
     {
         const uint64_t nonce = m_next_nonce++;
-        std::auto_ptr<e::buffer> msg = p->request(nonce);
-        bool sent = send(si, msg, p->status_ptr());
+        std::unique_ptr<e::buffer> msg = p->request(nonce);
+        bool sent = send(si, std::move(msg), p->status_ptr());
 
         if (!sent && !p->resend_on_failure())
         {
@@ -1120,9 +1120,9 @@ client :: send_robust(pending_robust* p)
         const size_t sz = BUSYBEE_HEADER_SIZE
                         + pack_size(REPLNET_GET_ROBUST_PARAMS)
                         + sizeof(uint64_t);
-        std::auto_ptr<e::buffer> msg(e::buffer::create(sz));
+        std::unique_ptr<e::buffer> msg(e::buffer::create(sz));
         msg->pack_at(BUSYBEE_HEADER_SIZE) << REPLNET_GET_ROBUST_PARAMS << nonce;
-        bool sent = send(si, msg, p->status_ptr());
+        bool sent = send(si, std::move(msg), p->status_ptr());
 
         if (sent)
         {
@@ -1138,9 +1138,9 @@ client :: send_robust(pending_robust* p)
 }
 
 bool
-client :: send(server_id si, std::auto_ptr<e::buffer> msg, replicant_returncode* status)
+client :: send(server_id si, std::unique_ptr<e::buffer> msg, replicant_returncode* status)
 {
-    busybee_returncode rc = m_busybee->send(si.get(), msg);
+    busybee_returncode rc = m_busybee->send(si.get(), std::move(msg));
 
     switch (rc)
     {

@@ -131,7 +131,7 @@ class client
         void handle_disruption(server_id si);
         int64_t send(pending* p);
         int64_t send_robust(pending_robust* p);
-        bool send(server_id si, std::auto_ptr<e::buffer> msg, replicant_returncode* status);
+        bool send(server_id si, std::unique_ptr<e::buffer> msg, replicant_returncode* status);
         void adopt_config(const configuration& c);
         void callback_config();
         void callback_tick();
@@ -145,7 +145,7 @@ class client
         // communication
         std::string m_conn_str;
         controller m_busybee_controller;
-        const std::auto_ptr<busybee_client> m_busybee;
+        const std::unique_ptr<busybee_client> m_busybee;
         // server selection
         uint64_t m_random_token;
         // configuration

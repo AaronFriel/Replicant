@@ -148,7 +148,7 @@ replicant :: start_bootstrap(busybee_client* cl, const std::vector<po6::net::hos
     {
         const size_t sz = BUSYBEE_HEADER_SIZE
                         + pack_size(REPLNET_BOOTSTRAP);
-        std::auto_ptr<e::buffer> msg(e::buffer::create(sz));
+        std::unique_ptr<e::buffer> msg(e::buffer::create(sz));
         msg->pack_at(BUSYBEE_HEADER_SIZE) << REPLNET_BOOTSTRAP;
         po6::net::location loc = hosts[i].lookup(AF_UNSPEC, IPPROTO_TCP);
 
@@ -160,7 +160,7 @@ replicant :: start_bootstrap(busybee_client* cl, const std::vector<po6::net::hos
             continue;
         }
 
-        switch (cl->send_anonymous(loc, msg))
+        switch (cl->send_anonymous(loc, std::move(msg)))
         {
             case BUSYBEE_SUCCESS:
                 ++sent;
@@ -292,7 +292,7 @@ bootstrap :: do_it(int timeout, configuration* config, e::error* err)
         }
 
         uint64_t id = 0;
-        std::auto_ptr<e::buffer> msg;
+        std::unique_ptr<e::buffer> msg;
         assert(start <= now);
         int t = timeout - (now - start) / PO6_MILLIS + 10;
         busybee_returncode brc = m_busybee->recv(timeout > 0 ? t/10 : timeout, &id, &msg);

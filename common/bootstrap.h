@@ -85,7 +85,7 @@ class bootstrap
     private:
         std::vector<po6::net::hostname> m_hosts;
         busybee_controller m_busybee_controller;
-        const std::auto_ptr<busybee_client> m_busybee;
+        const std::unique_ptr<busybee_client> m_busybee;
         bool m_valid;
 };
 

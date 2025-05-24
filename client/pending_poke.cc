@@ -43,13 +43,13 @@ pending_poke :: ~pending_poke() throw ()
 {
 }
 
-std::auto_ptr<e::buffer>
+std::unique_ptr<e::buffer>
 pending_poke :: request(uint64_t nonce)
 {
     const size_t sz = BUSYBEE_HEADER_SIZE
                     + pack_size(REPLNET_POKE)
                     + sizeof(uint64_t);
-    std::auto_ptr<e::buffer> msg(e::buffer::create(sz));
+    std::unique_ptr<e::buffer> msg(e::buffer::create(sz));
     msg->pack_at(BUSYBEE_HEADER_SIZE) << REPLNET_POKE << nonce;
     return msg;
 }
@@ -61,7 +61,7 @@ pending_poke :: resend_on_failure()
 }
 
 void
-pending_poke :: handle_response(client*, std::auto_ptr<e::buffer>, e::unpacker)
+pending_poke :: handle_response(client*, std::unique_ptr<e::buffer>, e::unpacker)
 {
     this->success();
 }

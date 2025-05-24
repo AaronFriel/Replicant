@@ -502,22 +502,39 @@ class Playground(object):
         states = {}
         wait = True
         iteration = 0
+        def tcp_states():
+            files = ['/proc/net/tcp', '/proc/net/tcp6']
+            for fn in files:
+                if not os.path.exists(fn):
+                    continue
+                for line in open(fn).read().splitlines()[1:]:
+                    cols = line.split()
+                    local = cols[1]
+                    state_code = cols[3]
+                    port = int(local.split(':')[1], 16)
+                    state_map = {
+                        '01': 'ESTABLISHED',
+                        '02': 'SYN_SENT',
+                        '03': 'SYN_RECV',
+                        '04': 'FIN_WAIT1',
+                        '05': 'FIN_WAIT2',
+                        '06': 'TIME_WAIT',
+                        '07': 'CLOSE',
+                        '08': 'CLOSE_WAIT',
+                        '09': 'LAST_ACK',
+                        '0A': 'LISTEN',
+                        '0B': 'CLOSING'
+                    }
+                    state = state_map.get(state_code, 'UNKNOWN')
+                    yield port, state
         while wait:
             wait = False
-            stdout = subprocess.check_output(('netstat', '-an'))
-            stdout = stdout.decode('utf8', 'ignore')
-            for x in re.findall('^tcp.*$', stdout, flags=re.MULTILINE):
-                x = re.sub('\s+', ' ', x).split(' ')
-                port = x[3].rsplit(':', 1)[-1]
-                try:
-                    port = int(port, 10)
-                except ValueError:
-                    raise GremlinError('error parsing netstat output')
-                state = x[5]
+            states = {}
+            for port, state in tcp_states():
                 states[port] = state
                 if port in ports and state != 'TIME_WAIT':
                     wait = True
-            if wait and all([x in ('LISTEN', 'ESTABLISHED') for x in list(states.values())]):
+            if wait and states and all([s in ('LISTEN', 'ESTABLISHED') for s in states.values()]):
                 raise GremlinError('ports in use by other processes')
             if wait:
                 time.sleep(0.1)
@@ -571,7 +588,12 @@ class Playground(object):
         env.update(self.environment)
         if 'GREMLIN_PREFIX' not in env:
             return ()
-        return tuple(shlex.split(env['GREMLIN_PREFIX'], posix=True))
+        args = shlex.split(env['GREMLIN_PREFIX'], posix=True)
+        if 'valgrind' in args and shutil.which('valgrind') is None:
+            print('valgrind not found; running without it')
+            idx = args.index('valgrind')
+            args = args[:idx]  # drop valgrind and all later args
+        return tuple(args)
 
 def main(todo):
     try:

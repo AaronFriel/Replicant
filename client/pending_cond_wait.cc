@@ -58,7 +58,7 @@ pending_cond_wait :: ~pending_cond_wait() throw ()
 {
 }
 
-std::auto_ptr<e::buffer>
+std::unique_ptr<e::buffer>
 pending_cond_wait :: request(uint64_t nonce)
 {
     e::slice obj(m_object);
@@ -68,7 +68,7 @@ pending_cond_wait :: request(uint64_t nonce)
                     + 2 * sizeof(uint64_t)
                     + pack_size(obj)
                     + pack_size(cond);
-    std::auto_ptr<e::buffer> msg(e::buffer::create(sz));
+    std::unique_ptr<e::buffer> msg(e::buffer::create(sz));
     msg->pack_at(BUSYBEE_HEADER_SIZE)
         << REPLNET_COND_WAIT << nonce << obj << cond << m_state;
     return msg;
@@ -81,7 +81,7 @@ pending_cond_wait :: resend_on_failure()
 }
 
 void
-pending_cond_wait :: handle_response(client*, std::auto_ptr<e::buffer>, e::unpacker up)
+pending_cond_wait :: handle_response(client*, std::unique_ptr<e::buffer>, e::unpacker up)
 {
     uint64_t state;
     e::slice data;

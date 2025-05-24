@@ -302,7 +302,7 @@ daemon :: run(bool background,
 
         uint64_t snapshot_slot;
         e::slice snapshot;
-        std::auto_ptr<e::buffer> snapshot_backing;
+        std::unique_ptr<e::buffer> snapshot_backing;
         m_replica->take_blocking_snapshot(&snapshot_slot, &snapshot, &snapshot_backing);
 
         if (!m_acceptor.record_snapshot(snapshot_slot, snapshot))
@@ -360,7 +360,7 @@ daemon :: run(bool background,
         e::atomic::store_ptr_release(&m_busybee, busybee_server::create(&m_busybee_controller, m_us.id.get(), m_us.bind_to, &m_gc));
 
         e::slice snapshot;
-        std::auto_ptr<e::buffer> snapshot_backing;
+        std::unique_ptr<e::buffer> snapshot_backing;
 
         if (!m_acceptor.load_latest_snapshot(&snapshot, &snapshot_backing))
         {
@@ -537,7 +537,7 @@ daemon :: run(bool background,
 
         bool debug_mode = s_debug_mode;
         uint64_t token;
-        std::auto_ptr<e::buffer> msg;
+        std::unique_ptr<e::buffer> msg;
         busybee_returncode rc = m_busybee->recv(&m_gc_ts, 1, &token, &msg);
 
         switch (rc)
@@ -589,61 +589,61 @@ daemon :: run(bool background,
             case REPLNET_NOP:
                 break;
             case REPLNET_BOOTSTRAP:
-                process_bootstrap(si, msg, up);
+                process_bootstrap(si, std::move(msg), up);
                 break;
             case REPLNET_STATE_TRANSFER:
-                process_state_transfer(si, msg, up);
+                process_state_transfer(si, std::move(msg), up);
                 break;
             case REPLNET_WHO_ARE_YOU:
-                process_who_are_you(si, msg, up);
+                process_who_are_you(si, std::move(msg), up);
                 break;
             case REPLNET_PAXOS_PHASE1A:
-                process_paxos_phase1a(si, msg, up);
+                process_paxos_phase1a(si, std::move(msg), up);
                 break;
             case REPLNET_PAXOS_PHASE1B:
-                process_paxos_phase1b(si, msg, up);
+                process_paxos_phase1b(si, std::move(msg), up);
                 break;
             case REPLNET_PAXOS_PHASE2A:
-                process_paxos_phase2a(si, msg, up);
+                process_paxos_phase2a(si, std::move(msg), up);
                 break;
             case REPLNET_PAXOS_PHASE2B:
-                process_paxos_phase2b(si, msg, up);
+                process_paxos_phase2b(si, std::move(msg), up);
                 break;
             case REPLNET_PAXOS_LEARN:
-                process_paxos_learn(si, msg, up);
+                process_paxos_learn(si, std::move(msg), up);
                 break;
             case REPLNET_PAXOS_SUBMIT:
-                process_paxos_submit(si, msg, up);
+                process_paxos_submit(si, std::move(msg), up);
                 break;
             case REPLNET_SERVER_BECOME_MEMBER:
-                process_server_become_member(si, msg, up);
+                process_server_become_member(si, std::move(msg), up);
                 break;
             case REPLNET_UNIQUE_NUMBER:
-                process_unique_number(si, msg, up);
+                process_unique_number(si, std::move(msg), up);
                 break;
             case REPLNET_OBJECT_FAILED:
-                process_object_failed(si, msg, up);
+                process_object_failed(si, std::move(msg), up);
                 break;
             case REPLNET_POKE:
-                process_poke(si, msg, up);
+                process_poke(si, std::move(msg), up);
                 break;
             case REPLNET_COND_WAIT:
-                process_cond_wait(si, msg, up);
+                process_cond_wait(si, std::move(msg), up);
                 break;
             case REPLNET_CALL:
-                process_call(si, msg, up);
+                process_call(si, std::move(msg), up);
                 break;
             case REPLNET_GET_ROBUST_PARAMS:
-                process_get_robust_params(si, msg, up);
+                process_get_robust_params(si, std::move(msg), up);
                 break;
             case REPLNET_CALL_ROBUST:
-                process_call_robust(si, msg, up);
+                process_call_robust(si, std::move(msg), up);
                 break;
             case REPLNET_PING:
-                process_ping(si, msg, up);
+                process_ping(si, std::move(msg), up);
                 break;
             case REPLNET_PONG:
-                process_pong(si, msg, up);
+                process_pong(si, std::move(msg), up);
                 break;
             case REPLNET_IDENTITY:
             case REPLNET_CLIENT_RESPONSE:
@@ -717,13 +717,13 @@ daemon :: become_cluster_member(bootstrap current)
 
         for (size_t i = 0; !has_params && i < c.servers().size(); ++i)
         {
-            std::auto_ptr<busybee_single> bbs(busybee_single::create(c.servers()[i].bind_to));
+            std::unique_ptr<busybee_single> bbs(busybee_single::create(c.servers()[i].bind_to));
             const size_t sz = BUSYBEE_HEADER_SIZE
                             + pack_size(REPLNET_GET_ROBUST_PARAMS)
                             + sizeof(uint64_t);
-            std::auto_ptr<e::buffer> msg(e::buffer::create(sz));
+            std::unique_ptr<e::buffer> msg(e::buffer::create(sz));
             msg->pack_at(BUSYBEE_HEADER_SIZE) << REPLNET_GET_ROBUST_PARAMS << uint64_t(0);
-            bbs->send(msg);
+            bbs->send(std::move(msg));
             bbs->recv(1000, &msg);
 
             if (!msg.get())
@@ -746,17 +746,17 @@ daemon :: become_cluster_member(bootstrap current)
 
         for (size_t i = 0; has_params && i < c.servers().size(); ++i)
         {
-            std::auto_ptr<busybee_single> bbs(busybee_single::create(c.servers()[i].bind_to));
+            std::unique_ptr<busybee_single> bbs(busybee_single::create(c.servers()[i].bind_to));
             const size_t sz = BUSYBEE_HEADER_SIZE
                             + pack_size(REPLNET_CALL_ROBUST)
                             + 3 * sizeof(uint64_t)
                             + call.size();
-            std::auto_ptr<e::buffer> msg(e::buffer::create(sz));
+            std::unique_ptr<e::buffer> msg(e::buffer::create(sz));
             msg->pack_at(BUSYBEE_HEADER_SIZE)
                 << REPLNET_CALL_ROBUST << uint64_t(iteration) << cluster_nonce
                 << min_slot << e::pack_memmove(call.data(), call.size());
 
-            bbs->send(msg);
+            bbs->send(std::move(msg));
             bbs->recv(1000, &msg);
 
             if (!msg.get())
@@ -785,15 +785,15 @@ daemon :: become_cluster_member(bootstrap current)
 
         for (size_t i = 0; !success && i < c.servers().size(); ++i)
         {
-            std::auto_ptr<busybee_single> bbs(busybee_single::create(c.servers()[i].bind_to));
+            std::unique_ptr<busybee_single> bbs(busybee_single::create(c.servers()[i].bind_to));
             const size_t sz = BUSYBEE_HEADER_SIZE
                             + pack_size(REPLNET_SERVER_BECOME_MEMBER)
                             + pack_size(m_us);
-            std::auto_ptr<e::buffer> msg(e::buffer::create(sz));
+            std::unique_ptr<e::buffer> msg(e::buffer::create(sz));
             msg->pack_at(BUSYBEE_HEADER_SIZE)
                 << REPLNET_SERVER_BECOME_MEMBER << m_us;
 
-            bbs->send(msg);
+            bbs->send(std::move(msg));
             bbs->recv(1000, &msg);
 
             if (!msg.get())
@@ -830,7 +830,7 @@ daemon :: become_cluster_member(bootstrap current)
 
 void
 daemon :: setup_replica_from_bootstrap(bootstrap current,
-                                       std::auto_ptr<replica>* rep)
+                                       std::unique_ptr<replica>* rep)
 {
     LOG(INFO) << "copying replica state from existing cluster using " << current;
     configuration c;
@@ -855,12 +855,12 @@ daemon :: setup_replica_from_bootstrap(bootstrap current,
 
         for (size_t i = 0; !rep->get() && i < c.servers().size(); ++i)
         {
-            std::auto_ptr<busybee_single> bbs(busybee_single::create(c.servers()[i].bind_to));
+            std::unique_ptr<busybee_single> bbs(busybee_single::create(c.servers()[i].bind_to));
             const size_t sz = BUSYBEE_HEADER_SIZE
                             + pack_size(REPLNET_STATE_TRANSFER);
-            std::auto_ptr<e::buffer> msg(e::buffer::create(sz));
+            std::unique_ptr<e::buffer> msg(e::buffer::create(sz));
             msg->pack_at(BUSYBEE_HEADER_SIZE) << REPLNET_STATE_TRANSFER;
-            bbs->send(msg);
+            bbs->send(std::move(msg));
             bbs->recv(60000, &msg);
 
             if (!msg.get())
@@ -881,7 +881,7 @@ daemon :: setup_replica_from_bootstrap(bootstrap current,
                 if (rep->get())
                 {
                     uint64_t snapshot_slot;
-                    std::auto_ptr<e::buffer> snapshot_backing;
+                    std::unique_ptr<e::buffer> snapshot_backing;
                     (*rep)->take_blocking_snapshot(&snapshot_slot, &snapshot, &snapshot_backing);
 
                     if (!m_acceptor.record_snapshot(snapshot_slot, snapshot))
@@ -913,14 +913,14 @@ daemon :: send_bootstrap(server_id si)
               + pack_size(REPLNET_BOOTSTRAP)
               + pack_size(m_us)
               + pack_size(m_config);
-    std::auto_ptr<e::buffer> msg(e::buffer::create(sz));
+    std::unique_ptr<e::buffer> msg(e::buffer::create(sz));
     msg->pack_at(BUSYBEE_HEADER_SIZE) << REPLNET_BOOTSTRAP << m_us << m_config;
-    send(si, msg);
+    send(si, std::move(msg));
 }
 
 void
 daemon :: process_bootstrap(server_id si,
-                            std::auto_ptr<e::buffer>,
+                            std::unique_ptr<e::buffer>,
                             e::unpacker)
 {
     po6::net::location addr;
@@ -939,21 +939,21 @@ daemon :: process_bootstrap(server_id si,
 
 void
 daemon :: process_state_transfer(server_id si,
-                                 std::auto_ptr<e::buffer>,
+                                 std::unique_ptr<e::buffer>,
                                  e::unpacker)
 {
     uint64_t snapshot_slot;
     e::slice snapshot;
-    std::auto_ptr<e::buffer> snapshot_backing;
+    std::unique_ptr<e::buffer> snapshot_backing;
     m_replica->get_last_snapshot(&snapshot_slot, &snapshot, &snapshot_backing);
 
     if (snapshot_slot == 0)
     {
         size_t sz = BUSYBEE_HEADER_SIZE
                   + pack_size(REPLNET_NOP);
-        std::auto_ptr<e::buffer> msg(e::buffer::create(sz));
+        std::unique_ptr<e::buffer> msg(e::buffer::create(sz));
         msg->pack_at(BUSYBEE_HEADER_SIZE) << REPLNET_NOP;
-        send(si, msg);
+        send(si, std::move(msg));
         return;
     }
 
@@ -961,23 +961,23 @@ daemon :: process_state_transfer(server_id si,
               + pack_size(REPLNET_STATE_TRANSFER)
               + sizeof(uint64_t)
               + pack_size(snapshot);
-    std::auto_ptr<e::buffer> msg(e::buffer::create(sz));
+    std::unique_ptr<e::buffer> msg(e::buffer::create(sz));
     msg->pack_at(BUSYBEE_HEADER_SIZE)
         << REPLNET_STATE_TRANSFER << snapshot_slot << snapshot;
-    send(si, msg);
+    send(si, std::move(msg));
 }
 
 void
 daemon :: process_who_are_you(server_id si,
-                              std::auto_ptr<e::buffer>,
+                              std::unique_ptr<e::buffer>,
                               e::unpacker)
 {
     size_t sz = BUSYBEE_HEADER_SIZE
               + pack_size(REPLNET_IDENTITY)
               + pack_size(m_us);
-    std::auto_ptr<e::buffer> msg(e::buffer::create(sz));
+    std::unique_ptr<e::buffer> msg(e::buffer::create(sz));
     msg->pack_at(BUSYBEE_HEADER_SIZE) << REPLNET_IDENTITY << m_us;
-    send(si, msg);
+    send(si, std::move(msg));
 }
 
 void
@@ -986,14 +986,14 @@ daemon :: send_paxos_phase1a(server_id to, const ballot& b)
     size_t sz = BUSYBEE_HEADER_SIZE
               + pack_size(REPLNET_PAXOS_PHASE1A)
               + pack_size(b);
-    std::auto_ptr<e::buffer> msg(e::buffer::create(sz));
+    std::unique_ptr<e::buffer> msg(e::buffer::create(sz));
     msg->pack_at(BUSYBEE_HEADER_SIZE) << REPLNET_PAXOS_PHASE1A << b;
-    send(to, msg);
+    send(to, std::move(msg));
 }
 
 void
 daemon :: process_paxos_phase1a(server_id si,
-                                std::auto_ptr<e::buffer>,
+                                std::unique_ptr<e::buffer>,
                                 e::unpacker up)
 {
     ballot b;
@@ -1027,17 +1027,17 @@ daemon :: send_paxos_phase1b(server_id to)
               + pack_size(REPLNET_PAXOS_PHASE1B)
               + pack_size(m_acceptor.current_ballot())
               + pack_size(pvals);
-    std::auto_ptr<e::buffer> msg(e::buffer::create(sz));
+    std::unique_ptr<e::buffer> msg(e::buffer::create(sz));
     msg->pack_at(BUSYBEE_HEADER_SIZE)
         << REPLNET_PAXOS_PHASE1B
         << m_acceptor.current_ballot()
         << pvals;
-    send_when_acceptor_persistent(to, msg);
+    send_when_acceptor_persistent(to, std::move(msg));
 }
 
 void
 daemon :: process_paxos_phase1b(server_id si,
-                                std::auto_ptr<e::buffer>,
+                                std::unique_ptr<e::buffer>,
                                 e::unpacker up)
 {
     ballot b;
@@ -1090,14 +1090,14 @@ daemon :: send_paxos_phase2a(server_id to, const pvalue& p)
     size_t sz = BUSYBEE_HEADER_SIZE
               + pack_size(REPLNET_PAXOS_PHASE2A)
               + pack_size(p);
-    std::auto_ptr<e::buffer> msg(e::buffer::create(sz));
+    std::unique_ptr<e::buffer> msg(e::buffer::create(sz));
     msg->pack_at(BUSYBEE_HEADER_SIZE) << REPLNET_PAXOS_PHASE2A << p;
-    send(to, msg);
+    send(to, std::move(msg));
 }
 
 void
 daemon :: process_paxos_phase2a(server_id si,
-                                std::auto_ptr<e::buffer>,
+                                std::unique_ptr<e::buffer>,
                                 e::unpacker up)
 {
     pvalue p;
@@ -1126,14 +1126,14 @@ daemon :: send_paxos_phase2b(server_id to, const pvalue& p)
               + pack_size(REPLNET_PAXOS_PHASE2B)
               + pack_size(m_acceptor.current_ballot())
               + pack_size(p);
-    std::auto_ptr<e::buffer> msg(e::buffer::create(sz));
+    std::unique_ptr<e::buffer> msg(e::buffer::create(sz));
     msg->pack_at(BUSYBEE_HEADER_SIZE) << REPLNET_PAXOS_PHASE2B << m_acceptor.current_ballot() << p;
-    send_when_acceptor_persistent(to, msg);
+    send_when_acceptor_persistent(to, std::move(msg));
 }
 
 void
 daemon :: process_paxos_phase2b(server_id si,
-                                std::auto_ptr<e::buffer>,
+                                std::unique_ptr<e::buffer>,
                                 e::unpacker up)
 {
     ballot b;
@@ -1161,14 +1161,14 @@ daemon :: send_paxos_learn(server_id to, const pvalue& pval)
     size_t sz = BUSYBEE_HEADER_SIZE
               + pack_size(REPLNET_PAXOS_LEARN)
               + pack_size(pval);
-    std::auto_ptr<e::buffer> msg(e::buffer::create(sz));
+    std::unique_ptr<e::buffer> msg(e::buffer::create(sz));
     msg->pack_at(BUSYBEE_HEADER_SIZE) << REPLNET_PAXOS_LEARN << pval;
-    send(to, msg);
+    send(to, std::move(msg));
 }
 
 void
 daemon :: process_paxos_learn(server_id si,
-                              std::auto_ptr<e::buffer>,
+                              std::unique_ptr<e::buffer>,
                               e::unpacker msg_up)
 {
     pvalue p;
@@ -1217,7 +1217,7 @@ daemon :: process_paxos_learn(server_id si,
         {
             uint64_t snapshot_slot;
             e::slice snapshot;
-            std::auto_ptr<e::buffer> snapshot_backing;
+            std::unique_ptr<e::buffer> snapshot_backing;
             m_replica->get_last_snapshot(&snapshot_slot, &snapshot, &snapshot_backing);
 
             if (m_acceptor.record_snapshot(snapshot_slot, snapshot))
@@ -1270,7 +1270,7 @@ daemon :: send_paxos_submit(uint64_t slot_start,
                     + pack_size(REPLNET_PAXOS_SUBMIT)
                     + 2 * sizeof(uint64_t)
                     + pack_size(command);
-    std::auto_ptr<e::buffer> msg(e::buffer::create(sz));
+    std::unique_ptr<e::buffer> msg(e::buffer::create(sz));
     msg->pack_at(BUSYBEE_HEADER_SIZE)
         << REPLNET_PAXOS_SUBMIT << slot_start << slot_limit << command;
     LOG_IF(INFO, s_debug_mode) << "submitting to "
@@ -1278,12 +1278,12 @@ daemon :: send_paxos_submit(uint64_t slot_start,
                                << " command: [" << slot_start << ", "
                                << slot_limit << ") "
                                << e::strescape(std::string(command.cdata(), command.size()));
-    send(m_acceptor.current_ballot().leader, msg);
+    send(m_acceptor.current_ballot().leader, std::move(msg));
 }
 
 void
 daemon :: process_paxos_submit(server_id,
-                               std::auto_ptr<e::buffer> msg,
+                               std::unique_ptr<e::buffer> msg,
                                e::unpacker up)
 {
     uint64_t slot_start;
@@ -1304,7 +1304,7 @@ daemon :: process_paxos_submit(server_id,
     else if (m_acceptor.current_ballot().leader != m_us.id)
     {
         LOG_IF(INFO, s_debug_mode) << "forwarding command to leader of " << m_acceptor.current_ballot();
-        send(m_acceptor.current_ballot().leader, msg);
+        send(m_acceptor.current_ballot().leader, std::move(msg));
     }
 }
 
@@ -1603,7 +1603,7 @@ daemon :: construct_become_member_command(const server& s)
                     + sizeof(uint8_t)
                     + sizeof(uint64_t)
                     + pack_size(s);
-    std::auto_ptr<e::buffer> cmd(e::buffer::create(sz));
+    std::unique_ptr<e::buffer> cmd(e::buffer::create(sz));
     cmd->pack_at(0)
         << SLOT_SERVER_BECOME_MEMBER << uint8_t(0) << uint64_t(0) << s;
     return std::string(cmd->as_slice().cdata(), cmd->size());
@@ -1611,7 +1611,7 @@ daemon :: construct_become_member_command(const server& s)
 
 void
 daemon :: process_server_become_member(server_id si,
-                                       std::auto_ptr<e::buffer>,
+                                       std::unique_ptr<e::buffer>,
                                        e::unpacker up)
 {
     server s;
@@ -1660,7 +1660,7 @@ daemon :: periodic_check_address(uint64_t)
 
 void
 daemon :: process_unique_number(server_id si,
-                                std::auto_ptr<e::buffer> msg,
+                                std::unique_ptr<e::buffer> msg,
                                 e::unpacker up)
 {
     uint64_t client_nonce;
@@ -1670,7 +1670,7 @@ daemon :: process_unique_number(server_id si,
 
     if (!generate_nonce(&cluster_nonce))
     {
-        process_when_nonces_available(si, msg);
+        process_when_nonces_available(si, std::move(msg));
         return;
     }
 
@@ -1681,7 +1681,7 @@ daemon :: process_unique_number(server_id si,
     msg.reset(e::buffer::create(sz));
     msg->pack_at(BUSYBEE_HEADER_SIZE)
         << REPLNET_CLIENT_RESPONSE << client_nonce << cluster_nonce;
-    send(si, msg);
+    send(si, std::move(msg));
 }
 
 void
@@ -1704,7 +1704,7 @@ daemon :: periodic_generate_nonce_sequence(uint64_t)
                     + pack_size(m_us.id)
                     + sizeof(uint8_t)
                     + 2 * sizeof(uint64_t);
-    std::auto_ptr<e::buffer> cmd(e::buffer::create(sz));
+    std::unique_ptr<e::buffer> cmd(e::buffer::create(sz));
     cmd->pack_at(0)
         << SLOT_INCREMENT_COUNTER << uint8_t(0) << uint64_t(0) << m_us.id << new_token;
     send_paxos_submit(0, UINT64_MAX, std::string(cmd->as_slice().cdata(), cmd->size()));
@@ -1722,9 +1722,9 @@ daemon :: callback_nonce_sequence(server_id si, uint64_t token, uint64_t counter
         while (!m_msgs_waiting_for_nonces.empty())
         {
             si = m_msgs_waiting_for_nonces.front().si;
-            std::auto_ptr<e::buffer> msg(m_msgs_waiting_for_nonces.front().msg);
+            std::unique_ptr<e::buffer> msg(m_msgs_waiting_for_nonces.front().msg);
             m_msgs_waiting_for_nonces.pop_front();
-            m_busybee->deliver(si.get(), msg);
+            m_busybee->deliver(si.get(), std::move(msg));
         }
 
         convert_unassigned_to_unordered();
@@ -1752,14 +1752,14 @@ daemon :: generate_nonce(uint64_t* nonce)
 }
 
 void
-daemon :: process_when_nonces_available(server_id si, std::auto_ptr<e::buffer> msg)
+daemon :: process_when_nonces_available(server_id si, std::unique_ptr<e::buffer> msg)
 {
     m_msgs_waiting_for_nonces.push_back(deferred_msg(0, si, msg.release()));
 }
 
 void
 daemon :: process_object_failed(server_id si,
-                                std::auto_ptr<e::buffer>,
+                                std::unique_ptr<e::buffer>,
                                 e::unpacker)
 {
     if (si == m_us.id)
@@ -1788,10 +1788,10 @@ daemon :: callback_condition(server_id si,
                     + pack_size(REPLICANT_SUCCESS)
                     + sizeof(uint64_t)
                     + pack_size(data);
-    std::auto_ptr<e::buffer> msg(e::buffer::create(sz));
+    std::unique_ptr<e::buffer> msg(e::buffer::create(sz));
     msg->pack_at(BUSYBEE_HEADER_SIZE)
         << REPLNET_CLIENT_RESPONSE << nonce << REPLICANT_SUCCESS << state << data;
-    send_from_non_main_thread(si, msg);
+    send_from_non_main_thread(si, std::move(msg));
 }
 
 void
@@ -1829,15 +1829,15 @@ daemon :: callback_client(server_id si, uint64_t nonce,
                     + sizeof(uint64_t)
                     + pack_size(status)
                     + pack_size(output);
-    std::auto_ptr<e::buffer> msg(e::buffer::create(sz));
+    std::unique_ptr<e::buffer> msg(e::buffer::create(sz));
     msg->pack_at(BUSYBEE_HEADER_SIZE)
         << REPLNET_CLIENT_RESPONSE << nonce << status << output;
-    send_from_non_main_thread(si, msg);
+    send_from_non_main_thread(si, std::move(msg));
 }
 
 void
 daemon :: process_poke(server_id si,
-                       std::auto_ptr<e::buffer>,
+                       std::unique_ptr<e::buffer>,
                        e::unpacker up)
 {
     uint64_t client_nonce;
@@ -1861,7 +1861,7 @@ daemon :: process_poke(server_id si,
 
 void
 daemon :: process_cond_wait(server_id si,
-                            std::auto_ptr<e::buffer>,
+                            std::unique_ptr<e::buffer>,
                             e::unpacker up)
 {
     uint64_t client_nonce;
@@ -1875,7 +1875,7 @@ daemon :: process_cond_wait(server_id si,
 
 void
 daemon :: process_call(server_id si,
-                       std::auto_ptr<e::buffer>,
+                       std::unique_ptr<e::buffer>,
                        e::unpacker up)
 {
     uint64_t client_nonce;
@@ -1887,7 +1887,7 @@ daemon :: process_call(server_id si,
 
 void
 daemon :: process_get_robust_params(server_id si,
-                                    std::auto_ptr<e::buffer> msg,
+                                    std::unique_ptr<e::buffer> msg,
                                     e::unpacker up)
 {
     uint64_t client_nonce;
@@ -1897,7 +1897,7 @@ daemon :: process_get_robust_params(server_id si,
 
     if (!generate_nonce(&cluster_nonce))
     {
-        process_when_nonces_available(si, msg);
+        process_when_nonces_available(si, std::move(msg));
         return;
     }
 
@@ -1912,12 +1912,12 @@ daemon :: process_get_robust_params(server_id si,
     msg.reset(e::buffer::create(sz));
     msg->pack_at(BUSYBEE_HEADER_SIZE)
         << REPLNET_CLIENT_RESPONSE << client_nonce << cluster_nonce << start;
-    send(si, msg);
+    send(si, std::move(msg));
 }
 
 void
 daemon :: process_call_robust(server_id si,
-                              std::auto_ptr<e::buffer>,
+                              std::unique_ptr<e::buffer>,
                               e::unpacker up)
 {
     uint64_t client_nonce;
@@ -1959,14 +1959,14 @@ daemon :: send_ping(server_id to)
     size_t sz = BUSYBEE_HEADER_SIZE
               + pack_size(REPLNET_PING)
               + pack_size(m_acceptor.current_ballot());
-    std::auto_ptr<e::buffer> msg(e::buffer::create(sz));
+    std::unique_ptr<e::buffer> msg(e::buffer::create(sz));
     msg->pack_at(BUSYBEE_HEADER_SIZE) << REPLNET_PING << m_acceptor.current_ballot();
-    send(to, msg);
+    send(to, std::move(msg));
 }
 
 void
 daemon :: process_ping(server_id si,
-                       std::auto_ptr<e::buffer>,
+                       std::unique_ptr<e::buffer>,
                        e::unpacker up)
 {
     ballot b;
@@ -1980,14 +1980,14 @@ daemon :: send_pong(server_id to)
 {
     size_t sz = BUSYBEE_HEADER_SIZE
               + pack_size(REPLNET_PONG);
-    std::auto_ptr<e::buffer> msg(e::buffer::create(sz));
+    std::unique_ptr<e::buffer> msg(e::buffer::create(sz));
     msg->pack_at(BUSYBEE_HEADER_SIZE) << REPLNET_PONG;
-    send(to, msg);
+    send(to, std::move(msg));
 }
 
 void
 daemon :: process_pong(server_id si,
-                       std::auto_ptr<e::buffer>,
+                       std::unique_ptr<e::buffer>,
                        e::unpacker)
 {
     if (si != m_acceptor.current_ballot().leader)
@@ -2057,11 +2057,11 @@ daemon :: rebootstrap(bootstrap bs)
         {
             const size_t sz = BUSYBEE_HEADER_SIZE
                             + pack_size(REPLNET_WHO_ARE_YOU);
-            std::auto_ptr<e::buffer> msg(e::buffer::create(sz));
+            std::unique_ptr<e::buffer> msg(e::buffer::create(sz));
             msg->pack_at(BUSYBEE_HEADER_SIZE) << REPLNET_WHO_ARE_YOU;
-            std::auto_ptr<busybee_single> bbs(busybee_single::create(hosts[i]));
+            std::unique_ptr<busybee_single> bbs(busybee_single::create(hosts[i]));
 
-            if (bbs->send(msg) != BUSYBEE_SUCCESS)
+            if (bbs->send(std::move(msg)) != BUSYBEE_SUCCESS)
             {
                 continue;
             }
@@ -2092,14 +2092,14 @@ daemon :: rebootstrap(bootstrap bs)
 }
 
 bool
-daemon :: send(server_id si, std::auto_ptr<e::buffer> msg)
+daemon :: send(server_id si, std::unique_ptr<e::buffer> msg)
 {
     if (si == m_us.id)
     {
-        return m_busybee->deliver(si.get(), msg);
+        return m_busybee->deliver(si.get(), std::move(msg));
     }
 
-    busybee_returncode rc = m_busybee->send(si.get(), msg);
+    busybee_returncode rc = m_busybee->send(si.get(), std::move(msg));
 
     switch (rc)
     {
@@ -2121,7 +2121,7 @@ daemon :: send(server_id si, std::auto_ptr<e::buffer> msg)
 }
 
 bool
-daemon :: send_from_non_main_thread(server_id si, std::auto_ptr<e::buffer> msg)
+daemon :: send_from_non_main_thread(server_id si, std::unique_ptr<e::buffer> msg)
 {
     busybee_server* bb = NULL;
 
@@ -2141,10 +2141,10 @@ daemon :: send_from_non_main_thread(server_id si, std::auto_ptr<e::buffer> msg)
 
     if (si == m_us.id)
     {
-        return bb->deliver(si.get(), msg);
+        return bb->deliver(si.get(), std::move(msg));
     }
 
-    busybee_returncode rc = bb->send(si.get(), msg);
+    busybee_returncode rc = bb->send(si.get(), std::move(msg));
 
     switch (rc)
     {
@@ -2166,7 +2166,7 @@ daemon :: send_from_non_main_thread(server_id si, std::auto_ptr<e::buffer> msg)
 }
 
 bool
-daemon :: send_when_acceptor_persistent(server_id si, std::auto_ptr<e::buffer> msg)
+daemon :: send_when_acceptor_persistent(server_id si, std::unique_ptr<e::buffer> msg)
 {
     m_msgs_waiting_for_persistence.push_back(deferred_msg(m_acceptor.write_cut(), si, msg.release()));
     return true;
@@ -2180,8 +2180,8 @@ daemon :: flush_acceptor_messages()
     while (!m_msgs_waiting_for_persistence.empty() && m_msgs_waiting_for_persistence.front().when <= when)
     {
         deferred_msg* dm = &m_msgs_waiting_for_persistence.front();
-        std::auto_ptr<e::buffer> msg(dm->msg);
-        send(dm->si, msg);
+        std::unique_ptr<e::buffer> msg(dm->msg);
+        send(dm->si, std::move(msg));
         m_msgs_waiting_for_persistence.pop_front();
     }
 }

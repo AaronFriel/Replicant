@@ -377,7 +377,7 @@ replica :: strike_number(server_id si) const
 void
 replica :: take_blocking_snapshot(uint64_t* snapshot_slot,
                                   e::slice* snapshot,
-                                  std::auto_ptr<e::buffer>* snapshot_backing)
+                                  std::unique_ptr<e::buffer>* snapshot_backing)
 {
     initiate_snapshot();
     snapshot_barrier();
@@ -459,7 +459,7 @@ replica :: from_snapshot(daemon* d, const e::slice& snap)
         return NULL;
     }
 
-    std::auto_ptr<replica> rep(new replica(d, configs.front()));
+    std::unique_ptr<replica> rep(new replica(d, configs.front()));
     rep->m_slot = slot;
     rep->m_counter = counter;
     rep->m_configs = configs;
@@ -548,7 +548,7 @@ replica :: last_snapshot_num()
 void
 replica :: get_last_snapshot(uint64_t* snapshot_slot,
                              e::slice* snapshot,
-                             std::auto_ptr<e::buffer>* snapshot_backing)
+                             std::unique_ptr<e::buffer>* snapshot_backing)
 {
     bool block = false;
     m_latest_snapshot_mtx.lock();
